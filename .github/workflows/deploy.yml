@@ -1,0 +1,62 @@
+name: React JS Deploy
+
+on:
+  push:
+    branches:
+      - "**generated-build_**"
+  pull_request:
+    branches:
+      - "**generated-build_**"
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Create React App
+        run: npx create-react-app my-app
+
+      - name: Find and rename generated code file
+        run: |
+          generated_file=$(find . -type f -name 'generated_code_*.js')
+          if [ -n "$generated_file" ]; then
+            mv "$generated_file" generated_code.js
+          fi
+
+      - name: Replace existing app.js with generated code
+        run: |
+          if [ -f "generated_code.js" ]; then
+            cat generated_code.js > my-app/src/App.js
+          fi
+
+          # Remove the generated code file
+          rm generated_code.js
+
+      - name: Build React app
+        run: |
+          cd my-app
+          npm install
+          npm run build
+
+      - name: Commit and push changes
+        if: success()
+        run: |
+          git config --global user.email "placeholder"
+          git config --global user.name "placeholder"
+          git add .
+          git commit -m "Update app.js with generated code and build React app"
+          git push origin HEAD
+
+      - name: Deploy 🚀
+        id: deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: my-app/build # The folder containing the built React app
+          branch : github-pages-${{ github.ref_name }} # The branch the action should deploy to.
+
